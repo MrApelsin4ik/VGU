@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Создание новости</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f5f5f7;
+        }
+        .container {
+            max-width: 900px;
+            margin: 30px auto;
+            background: #ffffff;
+            padding: 24px 28px 32px;
+            border-radius: 10px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+        }
+        h1 {
+            margin-top: 0;
+            font-size: 24px;
+        }
+        .field {
+            margin-bottom: 16px;
+        }
+        label {
+            font-weight: 600;
+            display: inline-block;
+            margin-bottom: 6px;
+        }
+        input[type="text"],
+        select,
+        textarea {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 8px 10px;
+            border-radius: 6px;
+            border: 1px solid #d0d0d5;
+            font-size: 14px;
+        }
+        textarea {
+            resize: vertical;
+        }
+        input[type="file"] {
+            margin-top: 4px;
+        }
+        .error {
+            color: #c00;
+            font-size: 12px;
+            margin-top: 4px;
+        }
+        .alert {
+            padding: 10px 12px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+        }
+        .alert-success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .files-list {
+            margin: 6px 0 0;
+            padding-left: 18px;
+            font-size: 13px;
+        }
+        .files-list li {
+            margin-bottom: 2px;
+        }
+        .checkbox-label {
+            font-weight: 400;
+        }
+        button[type="submit"] {
+            padding: 10px 18px;
+            border-radius: 6px;
+            border: none;
+            background: #007bff;
+            color: #fff;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        button[type="submit"]:hover {
+            background: #0069d9;
+        }
+        hr {
+            border: none;
+            border-top: 1px solid #e3e3e6;
+            margin: 18px 0;
+        }
+        small {
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Создание новости</h1>
+
+    {% if success %}
+        <div class="alert alert-success">
+            Новость успешно сохранена.
+        </div>
+    {% endif %}
+
+    <form id="news-form" method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        <div class="field">
+            <label for="id_section">Раздел</label>
+            <select name="section" id="id_section">
+                <option value="">-- выберите раздел --</option>
+                {% for s in sections %}
+                    <option value="{{ s.id }}"
+                        {% if old.section == s.id|stringformat:"s" %}
+                            selected
+                        {% endif %}
+                    >{{ s.title }}</option>
+                {% endfor %}
+            </select>
+            {% if errors.section %}
+                <div class="error">{{ errors.section }}</div>
+            {% endif %}
+        </div>
+
+        <div class="field">
+            <label for="id_title">Тема</label>
+            <input type="text" name="title" id="id_title"
+                   value="{{ old.title|default:'' }}">
+            {% if errors.title %}
+                <div class="error">{{ errors.title }}</div>
+            {% endif %}
+        </div>
+
+        <div class="field">
+            <label for="id_short_description">Краткое описание</label>
+            <textarea name="short_description" id="id_short_description"
+                      rows="3">{{ old.short_description|default:'' }}</textarea>
+            {% if errors.short_description %}
+                <div class="error">{{ errors.short_description }}</div>
+            {% endif %}
+        </div>
+
+        <div class="field">
+            <label for="id_body">Полное описание</label>
+            <textarea name="body" id="id_body" rows="8">{{ old.body|default:'' }}</textarea>
+            {% if errors.body %}
+                <div class="error">{{ errors.body }}</div>
+            {% endif %}
+        </div>
+
+        <div class="field">
+            <label class="checkbox-label">
+                <input type="checkbox" name="is_published" id="id_is_published"
+                       {% if old.is_published|default:True %}checked{% endif %}>
+                Опубликовано
+            </label>
+        </div>
+
+        <hr>
+
+        <div class="field">
+            <label for="id_images">Изображения (можно несколько)</label>
+            <input type="file" name="images" id="id_images" multiple accept="image/*">
+            <ul id="images-list" class="files-list"></ul>
+            <small>Первая выбранная картинка будет использована как превью.</small>
+        </div>
+
+        <div class="field">
+            <label for="id_attachments">Файлы (можно несколько)</label>
+            <input type="file" name="attachments" id="id_attachments" multiple>
+            <ul id="attachments-list" class="files-list"></ul>
+        </div>
+
+        <hr>
+
+        <button type="submit">Сохранить</button>
+    </form>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const imgInput = document.getElementById("id_images");
+    const imgList = document.getElementById("images-list");
+    const attInput = document.getElementById("id_attachments");
+    const attList = document.getElementById("attachments-list");
+
+    function renderFileList(input, listElem) {
+        listElem.innerHTML = "";
+        if (!input.files || input.files.length === 0) return;
+
+        for (const file of input.files) {
+            const li = document.createElement("li");
+            li.textContent = file.name;
+            listElem.appendChild(li);
+        }
+    }
+
+    if (imgInput) {
+        imgInput.addEventListener("change", function () {
+            renderFileList(imgInput, imgList);
+        });
+    }
+
+    if (attInput) {
+        attInput.addEventListener("change", function () {
+            renderFileList(attInput, attList);
+        });
+    }
+});
+</script>
+
+</body>
+</html>

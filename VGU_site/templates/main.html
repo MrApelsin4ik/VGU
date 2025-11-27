@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Главная</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: #f5f5f7;
+        }
+
+        .page {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Верхняя панель */
+        .top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 30px;
+            background: #1f2933;
+            color: #fff;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .logo {
+            font-weight: 600;
+            font-size: 18px;
+        }
+
+        .search-wrapper {
+            position: relative;
+        }
+
+        .search-input {
+            width: 220px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            border: none;
+            outline: none;
+            transition: width 0.25s ease, background 0.25s ease;
+            background: #111827;
+            color: #fff;
+        }
+
+        .search-input::placeholder {
+            color: #9ca3af;
+        }
+
+        .search-input:focus {
+            width: 420px;
+            background: #030712;
+        }
+
+        .search-results {
+            position: absolute;
+            top: 120%;
+            right: 0;
+            width: 420px;
+            max-height: 400px;
+            overflow-y: auto;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(15, 23, 42, 0.25);
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+        .search-results.hidden {
+            display: none;
+        }
+
+        .search-title {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #6b7280;
+            margin: 8px 0 4px;
+        }
+
+        .search-item {
+            display: block;
+            padding: 6px 8px;
+            border-radius: 8px;
+            text-decoration: none;
+            color: #111827;
+            font-size: 14px;
+        }
+
+        .search-item strong {
+            display: block;
+            margin-bottom: 2px;
+        }
+
+        .search-item:hover {
+            background: #f3f4f6;
+        }
+
+        .search-empty {
+            padding: 6px 8px;
+            font-size: 13px;
+            color: #6b7280;
+        }
+
+
+        .layout {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+            gap: 24px;
+        }
+
+        .news-column {
+            flex: 0 0 720px;
+        }
+
+        .news-item {
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 16px 18px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+        }
+
+        .news-item h2 {
+            margin: 0 0 8px;
+            font-size: 20px;
+        }
+
+        .news-meta {
+            font-size: 12px;
+            color: #6b7280;
+            margin-bottom: 10px;
+        }
+
+        .news-item p {
+            margin: 0 0 8px;
+            font-size: 14px;
+        }
+
+        .news-item a.more-link {
+            font-size: 13px;
+            color: #2563eb;
+            text-decoration: none;
+        }
+
+        .news-item a.more-link:hover {
+            text-decoration: underline;
+        }
+
+
+        .sidebar {
+            flex: 0 0 260px;
+        }
+
+        .sidebar-inner {
+            position: sticky;
+            top: 75px;
+        }
+
+        .sidebar h3 {
+            margin: 0 0 10px;
+            font-size: 16px;
+        }
+
+        .ann-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .ann-btn {
+            display: block;
+            padding: 8px 10px;
+            border-radius: 999px;
+            background: #111827;
+            color: #e5e7eb;
+            text-decoration: none;
+            font-size: 13px;
+            text-align: left;
+            border: none;
+            cursor: pointer;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .ann-btn:hover {
+            background: #374151;
+        }
+
+        .sidebar-empty {
+            font-size: 13px;
+            color: #6b7280;
+        }
+
+        @media (max-width: 1024px) {
+            .layout {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .sidebar {
+                order: -1;
+            }
+            .sidebar-inner {
+                position: static;
+            }
+            .search-input,
+            .search-input:focus {
+                width: 100%;
+            }
+            .search-results {
+                width: 100%;
+                left: 0;
+                right: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="page">
+    <header class="top-bar">
+
+
+        <div class="search-wrapper">
+            <form id="search-form" action="" method="get" autocomplete="off">
+                <input
+                    id="search-input"
+                    class="search-input"
+                    type="text"
+                    name="q"
+                    placeholder="Поиск по новостям и объявлениям"
+                >
+            </form>
+            <div id="search-results" class="search-results hidden">
+                <div id="search-results-inner" class="search-results-inner">
+                    <div class="search-empty">Введите текст для поиска</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="layout">
+        <!-- Центральная колонка новостей -->
+        <section class="news-column">
+            {% for news in news_list %}
+                <article class="news-item">
+                    <h2>{{ news.title }}</h2>
+                    <div class="news-meta">
+                        {{ news.created_at|date:"d.m.Y H:i" }}
+                        {% if news.section %} · {{ news.section.title }}{% endif %}
+                    </div>
+                    <p>{{ news.short_description }}</p>
+
+                    <a class="more-link" href="/news/{{ news.id }}/">Подробнее</a>
+                </article>
+            {% empty %}
+                <p>Новостей пока нет.</p>
+            {% endfor %}
+        </section>
+
+        <!-- Правый столбик объявлений -->
+        <aside class="sidebar">
+            <div class="sidebar-inner">
+                <h3>Объявления</h3>
+                <div class="ann-list">
+                    {% for ann in announcements_sidebar %}
+                        <a class="ann-btn" href="/announcement/{{ ann.id }}/">
+                            {{ ann.title }}
+                        </a>
+                    {% empty %}
+                        <div class="sidebar-empty">
+                            Объявлений пока нет.
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </aside>
+    </main>
+</div>
+
+<script>
+    const searchInput = document.getElementById("search-input");
+    const searchResults = document.getElementById("search-results");
+    const searchResultsInner = document.getElementById("search-results-inner");
+    let searchTimer = null;
+
+
+    searchInput.addEventListener("focus", () => {
+        searchResults.classList.remove("hidden");
+    });
+
+
+    searchInput.addEventListener("input", () => {
+        const q = searchInput.value.trim();
+        clearTimeout(searchTimer);
+
+        if (!q) {
+            searchResultsInner.innerHTML = '<div class="search-empty">Введите текст для поиска</div>';
+            return;
+        }
+
+        searchTimer = setTimeout(() => {
+            fetch(`?q=${encodeURIComponent(q)}`, {
+                headers: {
+                    "X-Requested-With": "XMLHttpRequest"
+                }
+            })
+                .then(response => response.json())
+                .then(data => {
+                    let html = "";
+
+                    if (data.news && data.news.length) {
+                        html += '<div class="search-block">';
+                        html += '<div class="search-title">Новости</div>';
+                        data.news.forEach(n => {
+                            html += `
+                                <a class="search-item" href="/news/${n.id}/">
+                                    <strong>${n.title}</strong>
+                                    <div>${n.short_description || ""}</div>
+                                </a>
+                            `;
+                        });
+                        html += "</div>";
+                    }
+
+                    if (data.announcements && data.announcements.length) {
+                        html += '<div class="search-block">';
+                        html += '<div class="search-title">Объявления</div>';
+                        data.announcements.forEach(a => {
+                            html += `
+                                <a class="search-item" href="/announcement/${a.id}/">
+                                    <strong>${a.title}</strong>
+                                    <div>${a.body || ""}</div>
+                                </a>
+                            `;
+                        });
+                        html += "</div>";
+                    }
+
+                    if (!html) {
+                        html = '<div class="search-empty">Ничего не найдено</div>';
+                    }
+
+                    searchResultsInner.innerHTML = html;
+                })
+                .catch(() => {
+                    searchResultsInner.innerHTML = '<div class="search-empty">Ошибка поиска</div>';
+                });
+        }, 300);
+    });
+
+
+    document.addEventListener("click", (e) => {
+        if (!searchResults.contains(e.target) && e.target !== searchInput) {
+            searchResults.classList.add("hidden");
+        }
+    });
+</script>
+</body>
+</html>
