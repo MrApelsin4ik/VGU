@@ -2,7 +2,8 @@ from email.policy import default
 
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.db import models
-
+from django.conf import settings
+from django.utils import timezone
 
 class CustomUserManager(BaseUserManager):
     def create_user(self, email, username='', password=None):
@@ -49,6 +50,11 @@ class Section(models.Model):
         NEWS = "news", "Новости"
         ANNOUNCEMENT = "announcement", "Объявления"
         COURSES = "courses", "Курсы"
+        FEEDBACK = "feedback", "Обратная связь"
+
+    class UrlType(models.TextChoices):
+        RELATIVE = "relative", "Относительная"
+        ABSOLUTE = "absolute", "Абсолютная"
 
     title = models.CharField("Название раздела", max_length=255)
     parent = models.ForeignKey(
@@ -65,7 +71,15 @@ class Section(models.Model):
         choices=SectionType.choices,
         default=SectionType.MAIN,
     )
-    relative_url = models.CharField("Относительная ссылка", max_length=255, blank=True, null=True)
+    url_type = models.CharField(
+        "Тип ссылки",
+        max_length=10,
+        choices=UrlType.choices,
+        default=UrlType.RELATIVE,
+    )
+    url = models.CharField("ссылка", max_length=255, blank=True, null=True)
+
+
 
     class Meta:
         verbose_name = "Раздел"
@@ -73,6 +87,79 @@ class Section(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class Feedback(models.Model):
+    """
+    Обратная связь / отзыв от пользователя.
+    Несколько изображений и файлов прикрепляются через отдельные модели FeedbackImage/FeedbackAttachment.
+    """
+    section = models.ForeignKey(
+        "Section",
+        verbose_name="Раздел",
+        on_delete=models.PROTECT,
+        related_name="feedbacks",
+        null=True,
+        blank=True,
+    )
+    subject = models.CharField("Тема", max_length=255)
+    description = models.TextField("Описание", blank=True)
+    contact_email = models.EmailField("Email контакта", blank=True, null=True)
+    contact_phone = models.CharField("Телефон контакта", max_length=50, blank=True, null=True)
+
+    created_at = models.DateTimeField("Дата создания", auto_now_add=True)
+    is_handled = models.BooleanField("Обработан", default=False)
+    admin_note = models.TextField("Примечание администратора", blank=True, default='')
+
+    class Meta:
+        verbose_name = "Обратная связь"
+        verbose_name_plural = "Обратная связь"
+        ordering = ("-created_at",)
+
+    def __str__(self):
+        return f"{self.subject} — {self.contact_email or self.contact_phone or 'без контакта'}"
+
+
+class FeedbackImage(models.Model):
+    feedback = models.ForeignKey(
+        Feedback,
+        verbose_name="Отзыв",
+        on_delete=models.CASCADE,
+        related_name="images",
+    )
+    image = models.ImageField("Изображение", upload_to="feedback/images/")
+    sort_order = models.PositiveIntegerField("Порядок", default=0)
+
+    class Meta:
+        verbose_name = "Изображение отзыва"
+        verbose_name_plural = "Изображения отзывов"
+        ordering = ("sort_order", "id")
+
+    def __str__(self):
+        return f"Image for: {self.feedback.subject}"
+
+
+class FeedbackAttachment(models.Model):
+    feedback = models.ForeignKey(
+        Feedback,
+        verbose_name="Отзыв",
+        on_delete=models.CASCADE,
+        related_name="attachments",
+    )
+    file = models.FileField("Файл", upload_to="feedback/attachments/")
+    original_name = models.CharField("Оригинальное имя файла", max_length=255, blank=True)
+
+    class Meta:
+        verbose_name = "Файл отзыва"
+        verbose_name_plural = "Файлы отзывов"
+
+    def __str__(self):
+        return self.original_name or self.file.name
+
+    def save(self, *args, **kwargs):
+        if not self.original_name and self.file:
+            self.original_name = self.file.name.split("/")[-1]
+        super().save(*args, **kwargs)
 
 class Course(models.Model):
     """

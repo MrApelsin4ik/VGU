@@ -1,7 +1,7 @@
 from django.shortcuts import render, get_object_or_404
 from django.http import JsonResponse
 from django.db.models import Q
-from django.views.decorators.http import require_GET
+from django.views.decorators.http import require_GET,require_http_methods
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.shortcuts import render, redirect
 from .models import Section, News, NewsImage, NewsAttachment, Announcement
@@ -15,7 +15,7 @@ import os
 from django.conf import settings
 from django.db import transaction
 
-from .models import News, Announcement, Course, Section
+from .models import News, Announcement, Course, Section, Feedback, FeedbackAttachment, FeedbackImage
 
 import datetime
 
@@ -92,10 +92,10 @@ def main_page(request):
     per_page_ann = 15
     news_qs = News.objects.filter(is_published=True).order_by('-created_at')
     announcements_sidebar = Announcement.objects.filter(is_active=True).order_by('-created_at')
-    sections_qs = Section.objects.all().values('id', 'title', 'parent_id', 'section_type', 'relative_url')
+    sections_qs = Section.objects.all().values('id', 'title', 'parent_id', 'section_type', 'url')
     nodes = {}
     for s in sections_qs:
-        nodes[s['id']] = {'id': s['id'], 'title': s['title'], 'parent_id': s['parent_id'], 'section_type': s['section_type'], 'relative_url': s['relative_url'], 'children': []}
+        nodes[s['id']] = {'id': s['id'], 'title': s['title'], 'parent_id': s['parent_id'], 'section_type': s['section_type'], 'relative_url': s['url'], 'children': []}
     for s in sections_qs:
         pid = s['parent_id']
         if pid and pid in nodes:
@@ -384,6 +384,77 @@ def admin_news_create(request):
     return render(request, "admin_panel/news_create.html", context)
 
 
+@require_http_methods(["GET", "POST"])
+def feedback_create(request):
+    """
+    Публичная страница отправки обратной связи.
+    НЕ ИСПОЛЬЗУЕТ Django Forms — всё делаем вручную с request.POST / request.FILES.
+    """
+    if request.method == "POST":
+        subject = request.POST.get("subject", "").strip()
+        description = request.POST.get("description", "").strip()
+        section_id = request.POST.get("section") or None
+        contact_email = request.POST.get("contact_email", "") or None
+        contact_phone = request.POST.get("contact_phone", "") or None
+
+
+        if not subject:
+            messages.error(request, "Пожалуйста, укажите тему.")
+
+        else:
+            section = None
+            if section_id:
+                try:
+                    section = Section.objects.get(pk=section_id)
+                except Section.DoesNotExist:
+                    section = None
+
+            feedback = Feedback.objects.create(
+                subject=subject,
+                description=description,
+                section=section,
+                contact_email=contact_email,
+                contact_phone=contact_phone,
+                user=request.user if request.user.is_authenticated else None,
+            )
+
+
+            images = request.FILES.getlist("images")
+            for idx, img in enumerate(images):
+                FeedbackImage.objects.create(feedback=feedback, image=img, sort_order=idx)
+
+
+            files = request.FILES.getlist("files")
+            for f in files:
+                att = FeedbackAttachment(file=f, feedback=feedback)
+                att.save()
+
+            messages.success(request, "Спасибо! Ваш отзыв отправлен.")
+            return redirect(reverse("feedback_create"))
+
+    sections = Section.objects.filter(section_type=Section.SectionType.FEEDBACK).order_by("title")
+    return render(request, "feedback_form.html", {"sections": sections})
+
+
+
+@login_required
+@user_passes_test(staff_member_required)
+def feedback_list(request):
+    feedbacks = Feedback.objects.select_related("section").prefetch_related("images", "attachments").order_by("-created_at")
+    return render(request, "admin_panel/feedback_list.html", {"feedbacks": feedbacks})
+
+
+
+@login_required
+@user_passes_test(staff_member_required)
+@user_passes_test(lambda u: u.is_staff)
+def feedback_delete(request, pk):
+    fb = get_object_or_404(Feedback, pk=pk)
+    fb.delete()
+    messages.success(request, "Отзыв удалён.")
+    return redirect(reverse("feedback_list"))
+
+
 
 
 try:
@@ -632,3 +703,6 @@ class FullObjectView(APIView):
                             status=status.HTTP_400_BAD_REQUEST)
 
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+

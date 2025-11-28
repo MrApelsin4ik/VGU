@@ -11,7 +11,10 @@ urlpatterns = [
     path("news/<int:pk>/", news_detail, name="news_detail"),
     path("announcement/<int:pk>/", announcement_detail, name="announcement_detail"),
 
+    path("feedback/", feedback_create, name="feedback_create"),
 
+    path("admin/feedbacks/", feedback_list, name="feedback_list"),
+    path("admin/feedback/<int:pk>/delete/", feedback_delete, name="feedback_delete"),
 
 
     path("admin/news/create/", admin_news_create, name="admin_news_create"),

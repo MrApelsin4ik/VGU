@@ -226,7 +226,7 @@
         .ann-btn {
             display: block;
             padding: 8px 10px;
-            border-radius: 999px;
+            border-radius: 10px;
             background: #111827;
             color: #e5e7eb;
             text-decoration: none;
@@ -234,7 +234,8 @@
             text-align: left;
             border: none;
             cursor: pointer;
-            white-space: nowrap;
+            white-space: normal;
+            word-wrap: break-word;
             overflow: hidden;
             text-overflow: ellipsis;
         }
@@ -373,9 +374,16 @@
 
     <div class="sections-scroll">
         {% for section in sections %}
-            <a class="section-btn" href="{{ section.relative_url|default:'#' }}">{{ section.title }}</a>
+            {% if section.url_type == section.UrlType.ABSOLUTE %}
+                <a class="section-btn" href="http://{{ section.url }}">{{ section.title }}</a>
+            {% elif section.url_type == section.UrlType.RELATIVE %}
+                <a class="section-btn" href="/{{ section.url|default:'' }}">{{ section.title }}</a>
+            {% else %}
+                <a class="section-btn" href="#">{{ section.title }}</a>
+            {% endif %}
         {% endfor %}
     </div>
+
 
     <main class="layout">
         <section class="news-column">

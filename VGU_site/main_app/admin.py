@@ -16,9 +16,38 @@ from .models import (
     Announcement,
     AnnouncementImage,
     AnnouncementAttachment,
-
+    Feedback,
+    FeedbackImage,
+    FeedbackAttachment
 )
 
+
+
+
+class FeedbackImageInline(admin.TabularInline):
+    model = FeedbackImage
+    extra = 0
+    readonly_fields = ()
+    fields = ("image", "sort_order")
+
+class FeedbackAttachmentInline(admin.TabularInline):
+    model = FeedbackAttachment
+    extra = 0
+    fields = ("file", "original_name")
+
+@admin.register(Feedback)
+class FeedbackAdmin(admin.ModelAdmin):
+    list_display = ("subject", "section", "contact_email", "contact_phone", "created_at", "is_handled")
+    list_filter = ("is_handled", "created_at", "section")
+    search_fields = ("subject", "description", "contact_email", "contact_phone", "admin_note")
+    inlines = (FeedbackImageInline, FeedbackAttachmentInline)
+    readonly_fields = ("created_at",)
+    actions = ("mark_as_handled",)
+
+    def mark_as_handled(self, request, queryset):
+        updated = queryset.update(is_handled=True)
+        self.message_user(request, f"{updated} отзыв(ов) отмечено(ы) как обработанные.")
+    mark_as_handled.short_description = "Отметить выбранные отзывы как обработанные"
 
 class CustomUserAdmin(BaseUserAdmin):
     model = CustomUser
@@ -71,8 +100,8 @@ admin.site.register(CustomUser, CustomUserAdmin)
 
 @admin.register(Section)
 class SectionAdmin(admin.ModelAdmin):
-    list_display = ("title", "section_type", "parent", 'relative_url')
-    list_filter = ("section_type",)
+    list_display = ("title", "section_type", "parent", 'url', "url_type")
+    list_filter = ("section_type","url_type")
     search_fields = ("title",)
 
 
